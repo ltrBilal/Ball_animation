@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3 uid="uid://dsfg0hktnvqi3"]
+
+[ext_resource type="Texture2D" uid="uid://bcitcv1p1dm3k" path="res://icon.svg" id="1_agecj"]
+[ext_resource type="Script" path="res://addons/compute_shader_studio/compute_shader_studio_2d.gd" id="1_ex7dj"]
+
+[node name="Node2D" type="Node2D"]
+
+[node name="ComputeShaderStudio2D" type="Node" parent="." node_paths=PackedStringArray("data")]
+script = ExtResource("1_ex7dj")
+print_generated_code = true
+GLSL_code = "vec2 rot(float a) {
+    return mat2(cos(a), sin(a), -sin(a), cos(a)) * vec2(1.0);
+}
+
+vec2 m(vec2 v2, float deg) {
+    return mod((v2) * rot(radians(deg)), 60.0) - 30.0;
+}
+
+	ivec2 id = ivec2(gl_GlobalInvocationID.xy);
+	vec2 o = vec2(id) / vec2(1024.0);
+	vec2 R = vec2(1024.0);
+
+void hex(inout vec4 rgba, vec2 o) {
+    vec2 o1 = m(o, 0.0);
+    vec2 o2 = m(o, 60.0);
+    vec2 o3 = m(o, 120.0);
+    rgba += clamp(vec4(abs(o1.y) + abs(o2.y) + abs(o3.y) - 54.0), 0.1, 1.0);
+}
+
+// Packer la couleur en un entier
+int packedColor(vec4 color){
+    int packedColor = (int(color.r * 255.0) << 24) |
+                      (int(color.g * 255.0) << 16) |
+                      (int(color.b * 255.0) << 8) |
+                      int(color.a * 255.0);
+	return packedColor;
+}
+
+
+// Write your code HERE
+void main() {
+	o -= R / 2.0;
+	vec2 O = o;
+
+	uint x = gl_GlobalInvocationID.x;
+	uint y = gl_GlobalInvocationID.y;
+	uint p = x + y * WSX;
+
+	o /= min(R.x, R.y) / 300.0;
+	o -= vec2(cos(step / 3.14) * 128.0, sin(step / 3.14) * 64.0);
+    o /= abs(cos(step)) + 0.25;
+
+	float scale = 7.0;
+	float x1 = o.x / scale, y1 = o.y / scale;
+    float z = sqrt(x1 * x1 + y1 * y1) / scale;
+	o /= cos(z);
+
+	vec4 color = vec4(1, 0.5, 1.0, 0.33);  // le couleur initial
+	data_1[p] = packedColor(color);
+
+    //color *= pow(1.0 - cos(z), 2.0) + 3.0 / 4.0;
+    //data_2[p] = packedColor(color);
+	
+	if( z < 2.0 ){
+
+		// Ball
+		color = vec4(1, 0, 0, 0);
+		data_2[p] = packedColor(color);
+        o += vec2(cos(step / 1.0) * 90.0, -sin(step / 1.0) * 90.0);
+		hex(color, o);
+        o.y += 40.0;
+		hex(color, o);
+        color *= (pow(1.0 - cos(z), 2.0) + 3.0 / 4.0);
+        if (color.x <= 0.5) color *= pow(cos(z), -2.0) / 2.0;
+
+	} else{
+
+		// Background
+        if (max(R.x, R.y) / min(R.x, R.y) < 2.0 && min(R.x, R.y) > 1000.0 || min(R.x, R.y) <= 360.0){
+			color *= (cos(dot(O, O) * 5.0) + 2.0) / 3.0;
+		}
+        else{
+            color *= (cos(dot(O, O) / 4.0) + 2.0) / 3.0;
+		}
+	}
+	
+	data_0[p] = packedColor(color);
+
+}
+"
+data = [NodePath("data_0"), NodePath("data_1"), NodePath("data_2")]
+
+[node name="data_0" type="Sprite2D" parent="ComputeShaderStudio2D"]
+position = Vector2(177, 284)
+scale = Vector2(2.70703, 2.77344)
+texture = ExtResource("1_agecj")
+
+[node name="data_1" type="Sprite2D" parent="ComputeShaderStudio2D"]
+position = Vector2(973, 275)
+scale = Vector2(2.70703, 2.77344)
+texture = ExtResource("1_agecj")
+
+[node name="data_2" type="Sprite2D" parent="ComputeShaderStudio2D"]
+position = Vector2(589, 281)
+scale = Vector2(2.70703, 2.77344)
+texture = ExtResource("1_agecj")
